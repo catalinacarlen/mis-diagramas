@@ -68,6 +68,16 @@ Tomados de la consigna del proyecto; cada decisión técnica debe poder justific
 | RF-1.12 | **Rotar figuras** (tirador, pasos de 15°, 90°, persistencia). | S | 🟢 |
 | RF-1.13 | **Trazado de conectores:** recto, curvo (Bézier) y ortogonal (codos). | S | 🟢 |
 | RF-1.16 | **Guías inteligentes (snap)** al arrastrar: alinea a bordes/centros con líneas guía. | S | 🟢 |
+| RF-1.17 | **No editar texto** en figuras sin texto (Barra nav, Imagen, etc.). | S | 🟢 |
+| RF-1.18 | **Estilo de borde de figura** (sólido / guiones / punteado), como los conectores. | S | 🟢 |
+| RF-1.19 | **Dibujar para dimensionar:** trazar la figura en el lienzo en vez de aparecer en tamaño fijo. | S | 🟢 |
+| RF-1.20 | **Edición de texto in-place:** escribir sobre la figura viendo el resultado (sin cuadro que la tape). | S | 🔴 |
+| RF-1.21 | **Edición por compartimentos** en figuras estructuradas (ERD/Clase): título y filas por separado. | S | 🔴 |
+| RF-1.22 | **Drag&drop visual:** figura fantasma siguiendo el cursor + indicador de caída. | C | 🔴 |
+| RF-1.23 | **Íconos SVG** (no emojis) junto a las opciones de barra y panel. | C | 🔴 |
+| RF-1.24 | **Paletas de colores guardables** y reutilizables. | C | 🔴 |
+| RF-1.25 | **Badges / íconos de estado** sobre las figuras (semáforo, check, alerta…). | C | 🔴 |
+| RF-1.26 | **Quick-connect:** flechas al pasar el mouse para crear una figura ya conectada. | C | 🔴 |
 | RF-1.14 | **Alinear y distribuir** figuras (6 alineaciones + distribuir H/V). | S | 🟢 |
 | RF-1.15 | **Color propio de conector** (línea y cabeceras). | S | 🟢 |
 
@@ -189,7 +199,16 @@ Tomados de la consigna del proyecto; cada decisión técnica debe poder justific
 | **09** | Pulido: alinear/distribuir + color propio de conector | RF-1.14, RF-1.15 | ✅ Cerrada |
 | **10** | Fix + limpieza: íconos de alinear/distribuir, sin emojis, bug de distribuir | — (calidad) | ✅ Cerrada |
 | **11** | Ampliar bibliotecas: más cloud (AWS/Azure/GCP/Cisco) + BPMN avanzado | RF-1.A, RF-1.D | ✅ Cerrada |
-| **12** | Guías inteligentes (snap a bordes/centros) + accesibilidad (RNF-6) | RNF-6, deuda técnica | ⬜ Próxima |
+| **12** | Guías inteligentes (snap a bordes/centros) + accesibilidad (RNF-6) | RNF-6, deuda técnica | ✅ Cerrada |
+
+**Fase 2 — Mejoras de calidad y experiencia (alcance ampliado, post-cierre del SRS original):**
+
+| Iteración | Foco | Requisitos | Estado |
+|---|---|---|---|
+| **13** | Quick-wins de edición: no editar texto en figuras sin texto, estilo de borde, dibujar-para-dimensionar | RF-1.17, RF-1.18, RF-1.19 | ✅ Cerrada |
+| **14** | Texto de verdad: edición in-place + compartimentos en ERD/Clase | RF-1.20, RF-1.21 | ⬜ |
+| **15** | Estética y color: íconos SVG, drag&drop visual, paletas guardables | RF-1.23, RF-1.22, RF-1.24 | ⬜ |
+| **16** | Diferenciadores: badges de estado + quick-connect | RF-1.25, RF-1.26 | ⬜ |
 
 El orden prioriza requisitos imprescindibles (M) pendientes y aprovecha la **generalización**: el parser de la iteración 02 se reutiliza para SQL→ERD en la 07. La iteración 03 se insertó por **feedback temprano** de uso (principio de incrementalidad).
 
@@ -234,6 +253,16 @@ El orden prioriza requisitos imprescindibles (M) pendientes y aprovecha la **gen
 | RF-1.12 Rotar figuras | S | 08 | Test jsdom + muestrario | 🟢 |
 | RF-1.13 Trazado de conectores | S | 08 | Test jsdom + muestrario | 🟢 |
 | RF-1.16 Guías inteligentes (snap) | S | 12 | Test jsdom + muestrario | 🟢 |
+| RF-1.17 No editar texto sin texto | S | 13 | Test jsdom | 🟢 |
+| RF-1.18 Estilo de borde de figura | S | 13 | Test jsdom + muestrario | 🟢 |
+| RF-1.19 Dibujar para dimensionar | S | 13 | Test jsdom (pointer) | 🟢 |
+| RF-1.20 Edición de texto in-place | S | 14 | Uso manual | 🔴 |
+| RF-1.21 Compartimentos ERD/Clase | S | 14 | Test jsdom | 🔴 |
+| RF-1.22 Drag&drop visual | C | 15 | Uso manual | 🔴 |
+| RF-1.23 Íconos SVG en barra/panel | C | 15 | Revisión | 🔴 |
+| RF-1.24 Paletas de colores guardables | C | 15 | Test jsdom | 🔴 |
+| RF-1.25 Badges de estado | C | 16 | Test jsdom + muestrario | 🔴 |
+| RF-1.26 Quick-connect | C | 16 | Uso manual | 🔴 |
 | RF-1.14 Alinear / distribuir | S | 09 | Test jsdom + muestrario | 🟢 |
 | RF-1.15 Color propio de conector | S | 09 | Test jsdom + muestrario | 🟢 |
 | RF-1.A Redes AWS/Azure/GCP/Cisco | M | 01 / 11 | Test jsdom + muestrario | 🟢 |
@@ -266,10 +295,9 @@ El orden prioriza requisitos imprescindibles (M) pendientes y aprovecha la **gen
 | RNF-7 Sin copyright | — | 01 | Revisión | 🟢 |
 | RNF-8 i18n español | — | 01 | Revisión | 🟢 |
 
-**Resumen de avance (al cierre de la iteración 12), contado sobre la matriz (RF + RNF):**
-- Total: **45 🟢 · 0 🟡 · 0 🔴 — TODO EN VERDE.**
-- Todos los requisitos del SRS (funcionales y no funcionales) están cumplidos y verificados.
-- Lo que sigue son mejoras opcionales (multi-snap, guías al redimensionar, carriles BPMN múltiples, lectores de pantalla).
+**Resumen de avance:**
+- **SRS original (iteraciones 01–12): 100% cumplido** (45 requisitos en verde, funcionales y no funcionales).
+- **Fase 2 (mejoras de calidad/experiencia):** se incorporaron 10 requisitos nuevos (RF-1.17 a RF-1.26), en curso desde la iteración 13. Estado actual de esos 10: 🔴 pendientes (se irán cerrando por iteración).
 - Los 4 requisitos centrales del proyecto y todas las funciones pedidas están implementados y verificados.
 - Lo 🟡 son ampliaciones, no bloqueos: RF-1.A (más íconos cloud), RF-1.D (BPMN avanzado), RNF-6 (accesibilidad, mejora continua). Todo usable hoy.
 
@@ -293,3 +321,5 @@ El orden prioriza requisitos imprescindibles (M) pendientes y aprovecha la **gen
 | 1.9.2 | 13/06/2026 | Parche 10.2: la opción **Distribuir no se veía** — los 8 botones no entraban en el panel (190 px) y los 2 de distribuir quedaban cortados fuera. Rediseño en dos secciones etiquetadas y apiladas ("Alinear" / "Distribuir"); panel a 200 px. Verificado (existen, se habilitan con 3+, el clic reparte). |
 | 2.0 | 13/06/2026 | Cierre de iteración 11: ampliación de bibliotecas (18 servicios cloud + Cisco, BPMN avanzado) → RF-1.A y RF-1.D a 🟢. Fix estético del label "Fondo". **43 🟢 · 1 🟡 · 0 🔴 — todos los RF en verde.** 94 figuras en total. |
 | 2.1 | 13/06/2026 | Cierre de iteración 12: guías inteligentes (snap) → nuevo RF-1.16; accesibilidad (foco visible + mover con flechas) → RNF-6 a 🟢. **45 🟢 · 0 🟡 · 0 🔴 — SRS completo.** |
+| 2.2 | 13/06/2026 | Apertura de **Fase 2** (mejoras de calidad/experiencia): nuevos RF-1.17 a RF-1.26 a partir del feedback de uso; roadmap iteraciones 13–16. |
+| 2.3 | 13/06/2026 | Cierre de iteración 13: RF-1.17 (no editar texto sin texto), RF-1.18 (estilo de borde de figura), RF-1.19 (dibujar-para-dimensionar) → 🟢. |

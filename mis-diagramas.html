@@ -376,6 +376,8 @@
       <div class="prop-row" data-only="shape"><span>Relleno</span><input type="color" id="pFill" aria-label="Color de relleno"></div>
       <div class="prop-row" data-only="shape"><span>Borde</span><input type="color" id="pStroke" aria-label="Color de borde"></div>
       <div class="prop-row" data-only="shape"><span>Texto</span><input type="color" id="pText" aria-label="Color de texto"></div>
+      <div class="prop-row" data-only="shape"><span>Borde</span><select id="pBorder" aria-label="Estilo de borde">
+        <option value="solid">Sólido</option><option value="dashed">Guiones</option><option value="dotted">Punteado</option></select></div>
       <div class="prop-row" data-only="conn"><span>Trazado</span><select id="cRoute" aria-label="Trazado del conector">
         <option value="straight">Recto</option><option value="curved">Curvo</option><option value="orthogonal">Ortogonal</option></select></div>
       <div class="prop-row" data-only="conn"><span>Línea</span><select id="cStyle" aria-label="Estilo de línea">
@@ -823,10 +825,10 @@ const SHAPES = {
   "uml-component":{ cat: "UML", name: "Componente", w: 150, h: 80, body: componentBody, text: "center", fill: "#eef2ff", stroke: "#6366f1", label: "Componente" },
   "uml-state":    { cat: "UML", name: "Estado", w: 150, h: 60, body: roundedBody, text: "center", fill: "#eef2ff", stroke: "#6366f1", label: "Estado" },
   "uml-lifeline": { cat: "UML", name: "Línea de vida", w: 120, h: 240, body: lifelineBody, text: "none", fill: "#eef2ff", stroke: "#6366f1", fontSize: 13, label: "Objeto" },
-  "uml-activation": { cat: "UML", name: "Activación", w: 14, h: 120, body: activationBody, text: "none", fill: "#eef2ff", stroke: "#6366f1" },
+  "uml-activation": { cat: "UML", name: "Activación", w: 14, h: 120, body: activationBody, text: "none", noText: true, fill: "#eef2ff", stroke: "#6366f1" },
   "uml-initial":  { cat: "UML", name: "Nodo inicial", w: 38, h: 38, body: initialNodeBody, text: "below", fill: "#4338ca", stroke: "#4338ca", label: "", square: true },
   "uml-final":    { cat: "UML", name: "Nodo final", w: 42, h: 42, body: finalNodeBody, text: "below", fill: "none", stroke: "#4338ca", label: "", square: true },
-  "uml-fork":     { cat: "UML", name: "Fork / Join", w: 150, h: 12, body: forkBody, text: "below", fill: "#334155", stroke: "#334155", label: "" },
+  "uml-fork":     { cat: "UML", name: "Fork / Join", w: 150, h: 12, body: forkBody, text: "below", noText: true, fill: "#334155", stroke: "#334155", label: "" },
   // ---- ERD ----
   "erd-entity":   { cat: "ERD", name: "Entidad", w: 170, h: 120, body: structuredBody, text: "none", fill: "#ecfdf5", stroke: "#10b981", textColor: "#053a2b", fontSize: 13, label: "Entidad\nid (PK)\nnombre\nemail" },
   "erd-rel":      { cat: "ERD", name: "Relación", w: 150, h: 90, body: diamondBody, text: "center", fill: "#ecfdf5", stroke: "#10b981", textColor: "#053a2b", label: "relación", square: true },
@@ -901,9 +903,9 @@ const SHAPES = {
   "wf-input":     { cat: "Wireframe", name: "Campo de texto", w: 200, h: 38, body: wfInputBody, text: "none", fill: "#ffffff", stroke: "#94a3b8", textColor: "#334155", label: "Texto…" },
   "wf-checkbox":  { cat: "Wireframe", name: "Casilla", w: 140, h: 26, body: wfCheckboxBody, text: "none", fill: "#ffffff", stroke: "#94a3b8", textColor: "#334155", label: "Opción" },
   "wf-dropdown":  { cat: "Wireframe", name: "Desplegable", w: 180, h: 38, body: wfDropdownBody, text: "none", fill: "#ffffff", stroke: "#94a3b8", textColor: "#334155", label: "Seleccionar…" },
-  "wf-image":     { cat: "Wireframe", name: "Imagen", w: 160, h: 110, body: wfImageBody, text: "none", fill: "#eef2f7", stroke: "#94a3b8", textColor: "#334155", label: "" },
-  "wf-textlines": { cat: "Wireframe", name: "Párrafo", w: 200, h: 70, body: wfTextLinesBody, text: "none", fill: "none", stroke: "none", textColor: "#334155", label: "" },
-  "wf-navbar":    { cat: "Wireframe", name: "Barra nav", w: 280, h: 40, body: wfNavbarBody, text: "none", fill: "#1e293b", stroke: "none", textColor: "#ffffff", label: "" }
+  "wf-image":     { cat: "Wireframe", name: "Imagen", w: 160, h: 110, body: wfImageBody, text: "none", noText: true, fill: "#eef2f7", stroke: "#94a3b8", textColor: "#334155", label: "" },
+  "wf-textlines": { cat: "Wireframe", name: "Párrafo", w: 200, h: 70, body: wfTextLinesBody, text: "none", noText: true, fill: "none", stroke: "none", textColor: "#334155", label: "" },
+  "wf-navbar":    { cat: "Wireframe", name: "Barra nav", w: 280, h: 40, body: wfNavbarBody, text: "none", noText: true, fill: "#1e293b", stroke: "none", textColor: "#ffffff", label: "" }
 };
 // Defaults para categorías de íconos (se aplican si la entrada no los define).
 for (const t in SHAPES) {
@@ -1096,6 +1098,19 @@ function shapeEl(s) {
   if (s.type !== "text") g.appendChild(mk("rect", { x: s.x, y: s.y, width: s.w, height: s.h, fill: "transparent", stroke: "none" }));
   let nodes = def.body(s);
   if (!Array.isArray(nodes)) nodes = [nodes];
+  // Estilo de borde de figura (sólido/guiones/punteado): se aplica al contorno
+  // (nodos con stroke concreto), no a los grupos de íconos internos (tiles/redes).
+  if (s.borderStyle === "dashed" || s.borderStyle === "dotted") {
+    const dash = s.borderStyle === "dashed" ? "8 6" : "2 5";
+    nodes.forEach(n => {
+      if (n.tagName === "g") return;
+      const st = n.getAttribute("stroke");
+      if (st && st !== "none" && st !== "transparent") {
+        n.setAttribute("stroke-dasharray", dash);
+        if (s.borderStyle === "dotted") n.setAttribute("stroke-linecap", "round");
+      }
+    });
+  }
   nodes.forEach(n => g.appendChild(n));
   const tm = def.text || "center";
   if (tm === "center") g.appendChild(labelCenter(s));
@@ -1312,6 +1327,7 @@ function updateProps() {
   document.getElementById("pFill").value = isColor(s.fill) && s.fill !== "none" ? s.fill : "#ffffff";
   document.getElementById("pStroke").value = isColor(s.stroke) && s.stroke !== "none" ? s.stroke : "#334155";
   document.getElementById("pText").value = s.textColor || "#1e293b";
+  document.getElementById("pBorder").value = s.borderStyle || "solid";
   document.getElementById("pLock").textContent = shapes.some(x => !x.locked) ? "Bloquear" : "Desbloquear";
   const alignRow = document.getElementById("alignRow");
   alignRow.classList.toggle("show", shapes.length >= 2);
@@ -1331,6 +1347,13 @@ function bindColor(inputId, prop) {
 bindColor("pFill", "fill");
 bindColor("pStroke", "stroke");
 bindColor("pText", "textColor");
+document.getElementById("pBorder").addEventListener("change", e => {
+  const shapes = selectedShapes().filter(s => !s.locked);
+  if (!shapes.length) return;
+  pushUndo();
+  shapes.forEach(s => { if (e.target.value === "solid") delete s.borderStyle; else s.borderStyle = e.target.value; });
+  markDirty(); renderAll();
+});
 function bindConnSelect(id, prop) {
   document.getElementById(id).addEventListener("change", e => {
     if (selConnId === null) return;
@@ -1503,27 +1526,37 @@ function setTool(t) {
 }
 document.querySelectorAll(".tool-row [data-tool]").forEach(b => b.addEventListener("click", () => setTool(b.dataset.tool)));
 
-function createShape(type, x, y) {
+// Construye el objeto figura (sin tocar estado/selección) en la caja x,y,w,h.
+function buildShape(type, x, y, w, h) {
   const def = SHAPES[type];
   if (!def) return null;
-  const w = def.w, h = def.h;
-  pushUndo();
   const dark = isDark(), labelColor = dark ? "#e6ebf5" : "#1e293b";
-  const s = {
-    id: uid(), type, x: snap(x - w / 2), y: snap(y - h / 2), w, h,
+  return {
+    id: uid(), type, x: snap(x), y: snap(y), w, h,
     label: def.label !== undefined ? def.label : "",
     fill: "fill" in def ? def.fill : SHAPE_DEFAULTS.fill,
     stroke: def.themed ? (dark ? "#cbd5e1" : "#334155") : ("stroke" in def ? def.stroke : SHAPE_DEFAULTS.stroke),
     textColor: (def.themed || def.text === "below" || type === "text") ? labelColor : ("textColor" in def ? def.textColor : SHAPE_DEFAULTS.textColor),
     fontSize: def.fontSize || 14
   };
+}
+function autoEditNew(s) {
+  const def = SHAPES[s.type];
+  if (def.noText) return;
+  if ((def.text === "center" || def.text === "below") && s.type !== "text") startEdit("shape", s.id);
+  else if (s.type === "text") startEdit("shape", s.id);
+}
+// Colocación por clic (tamaño por defecto, centrado en x,y).
+function createShape(type, x, y) {
+  const def = SHAPES[type];
+  if (!def) return null;
+  pushUndo();
+  const s = buildShape(type, x - def.w / 2, y - def.h / 2, def.w, def.h);
   state.shapes.push(s);
   selectOnlyShape(s.id);
   setTool("select");
   markDirty(); renderAll();
-  // Auto-edición solo para figuras de texto simple (no estructuradas).
-  if ((def.text === "center" || def.text === "below") && type !== "text") startEdit("shape", s.id);
-  else if (type === "text") startEdit("shape", s.id);
+  autoEditNew(s);
   return s;
 }
 
@@ -1577,7 +1610,15 @@ svg.addEventListener("pointerdown", e => {
     drag = { kind: "resize", id: s.id, handle: handleEl.dataset.handle, orig: { ...s }, sx: pt.x, sy: pt.y, before: JSON.stringify(state), pushed: false };
     return;
   }
-  if (SHAPES[tool]) { createShape(tool, pt.x, pt.y); return; }
+  if (SHAPES[tool]) {
+    // Iniciar dibujo: si el usuario arrastra, define el tamaño; si solo hace clic, queda el tamaño por defecto.
+    pushUndo();
+    const s = buildShape(tool, snap(pt.x), snap(pt.y), MIN_W, MIN_H);
+    state.shapes.push(s); selectOnlyShape(s.id);
+    drag = { kind: "draw", id: s.id, sx: snap(pt.x), sy: snap(pt.y) };
+    renderAll();
+    return;
+  }
   if (tool === "connect") { if (shapeG) drag = { kind: "connect", fromId: +shapeG.dataset.id, x: pt.x, y: pt.y }; return; }
 
   if (shapeG) {
@@ -1633,6 +1674,12 @@ window.addEventListener("pointermove", e => {
     requestRender();
   } else if (drag.kind === "marquee") {
     drag.x1 = pt.x; drag.y1 = pt.y; requestRender();
+  } else if (drag.kind === "draw") {
+    const s = getShape(drag.id); if (!s) return;
+    const x = Math.min(drag.sx, snap(pt.x)), y = Math.min(drag.sy, snap(pt.y));
+    let w = Math.max(MIN_W, Math.abs(snap(pt.x) - drag.sx)), h = Math.max(MIN_H, Math.abs(snap(pt.y) - drag.sy));
+    if (SHAPES[s.type].square) { const m = Math.max(w, h); w = m; h = m; }
+    s.x = x; s.y = y; s.w = w; s.h = h; drag.moved = true; requestRender();
   } else if (drag.kind === "rotate") {
     const s = getShape(drag.id); if (!s) return;
     let ang = Math.atan2(pt.y - drag.cy, pt.x - drag.cx) * 180 / Math.PI + 90;
@@ -1672,6 +1719,20 @@ window.addEventListener("pointermove", e => {
 
 window.addEventListener("pointerup", e => {
   if (!drag) return;
+  if (drag.kind === "draw") {
+    const s = getShape(drag.id);
+    if (s) {
+      const def = SHAPES[s.type];
+      if (!drag.moved || (s.w <= MIN_W + 4 && s.h <= MIN_H + 4)) {
+        // Fue un clic (no un arrastre): tamaño por defecto, centrado en el punto.
+        s.w = def.w; s.h = def.h; s.x = snap(drag.sx - def.w / 2); s.y = snap(drag.sy - def.h / 2);
+        markDirty(); setTool("select"); renderAll(); autoEditNew(s);
+      } else {
+        markDirty(); setTool("select"); renderAll();
+      }
+    }
+    drag = null; return;
+  }
   if (drag.kind === "marquee") {
     const x = Math.min(drag.x0, drag.x1), y = Math.min(drag.y0, drag.y1), w = Math.abs(drag.x1 - drag.x0), h = Math.abs(drag.y1 - drag.y0);
     if (w > 3 || h > 3) {
@@ -1750,6 +1811,7 @@ function startEdit(kind, id) {
   if (kind === "shape") {
     const s = getShape(id); if (!s || s.locked) return;
     const def = SHAPES[s.type] || {};
+    if (def.noText) { selectOnlyShape(id); renderAll(); return; } // figura sin texto editable
     fontSize = s.fontSize || 14; current = s.label || "";
     if (def.text === "below") { x = s.x - 10; y = s.y + s.h; w = s.w + 20; h = Math.max(24, fontSize + 10); }
     else { x = s.x; y = s.y; w = s.w; h = s.h; }
@@ -1955,6 +2017,7 @@ function sanitizeDoc(data) {
     if (Number.isInteger(raw.group) && raw.group > 0) s.group = raw.group;
     if (raw.locked === true) s.locked = true;
     { const r = num(raw.rot, 0); if (r) s.rot = ((Math.round(r) % 360) + 360) % 360; }
+    if (raw.borderStyle === "dashed" || raw.borderStyle === "dotted") s.borderStyle = raw.borderStyle;
     if (validId) seen.add(raw.id);
     shapes.push(s);
   }
@@ -2705,8 +2768,9 @@ window.__app = {
   get presIndex() { return presIndex; },
   rotateBy, resetRot, connPath, applyBg,
   sqlToEntities, importSQL, exportSQL,
-  alignSelected, distributeSelected, computeSnap,
-  get snapGuides() { return snapGuides; }
+  alignSelected, distributeSelected, computeSnap, buildShape,
+  get snapGuides() { return snapGuides; },
+  get drag() { return drag; }, set drag(v) { drag = v; }
 };
 </script>
 </body>

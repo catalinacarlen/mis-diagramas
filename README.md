@@ -1,4 +1,4 @@
-# quetedenLucid — Mis Diagramas
+# Mis Diagramas
 
 > Herramienta de diagramación visual en un solo archivo HTML. Un clon de LucidChart, pensado para ir más rápido: cero instalación, cero servidor, control total del dato.
 

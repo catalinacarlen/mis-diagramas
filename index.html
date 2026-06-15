@@ -1935,12 +1935,20 @@ svg.addEventListener("dblclick", e => {
 
 // ---------- Drag & drop desde la paleta ----------
 // Hover para quick-connect: detectar la figura bajo el cursor (sin arrastre activo).
+// Los tiradores quedan FUERA del borde; para que no desaparezcan al moverse hacia
+// ellos, se mantiene el hover mientras el cursor siga dentro de una caja ampliada.
 svg.addEventListener("pointermove", e => {
   if (drag || editing || presenting || tool !== "select") { if (hoverShape !== null) { hoverShape = null; requestRender(); } return; }
   const qc = e.target.closest ? e.target.closest("[data-qc]") : null;
   const g = e.target.closest ? e.target.closest("g.shape") : null;
   let id = qc ? +qc.getAttribute("data-qc-id") : (g ? +g.dataset.id : null);
   if (id !== null) { const s = getShape(id); if (!s || s.locked) id = null; }
+  // Si no estamos sobre una figura/tirador, pero el cursor sigue cerca de la
+  // figura actualmente resaltada (zona de los tiradores), mantenemos el hover.
+  if (id === null && hoverShape !== null) {
+    const s = getShape(hoverShape), m = 26 / scale, pt = toWorld(e);
+    if (s && !s.locked && pt.x >= s.x - m && pt.x <= s.x + s.w + m && pt.y >= s.y - m && pt.y <= s.y + s.h + m) id = hoverShape;
+  }
   if (id !== hoverShape) { hoverShape = id; requestRender(); }
 });
 svg.addEventListener("dragover", e => {
@@ -2803,7 +2811,7 @@ function importSQL(sql) {
   pushUndo();
   const existing = contentBBox(0);
   const ox = existing ? existing.x : 80, oy0 = existing ? existing.y + existing.h + 80 : 80;
-  const PERROW = 3, GAP = 44;
+  const PERROW = 3, GAP = 150;
   let col = 0, rowX = ox, rowY = oy0, rowMaxH = 0;
   const nameToId = new Map();
   for (const e of ents) {

@@ -42,6 +42,11 @@
   }
   .tb:hover { background: var(--btn-hover); }
   .tb:disabled { opacity: .35; cursor: default; }
+  .tb svg, .tool svg { width: 15px; height: 15px; flex: none; display: block; }
+  .tb svg { color: var(--ink-soft); }
+  .tb:hover svg { color: var(--accent); }
+  .tool svg { color: var(--ink-soft); }
+  .tool.active svg { color: var(--accent); }
   /* ---------- Layout ---------- */
   #main { flex: 1; display: flex; min-height: 0; }
   #palette {
@@ -116,6 +121,13 @@
   }
   #props .actions button:hover { background: var(--btn-hover); }
   #props .actions button.del { color: var(--danger); border-color: var(--danger); }
+  .palette-block { margin: 4px 0 10px; }
+  .prop-sub { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin-bottom: 5px; }
+  .prop-sub small { text-transform: none; letter-spacing: 0; font-size: 9.5px; display: block; opacity: .8; }
+  .pal-swatches { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pal-swatches button { width: 18px; height: 18px; border-radius: 5px; border: 1px solid rgba(0,0,0,.2); cursor: pointer; padding: 0; }
+  .pal-swatches button.pal-add { background: transparent; border: 1px dashed var(--border); color: var(--ink-soft); display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
+  .pal-swatches button.pal-add:hover { border-color: var(--accent); color: var(--accent); }
   #alignRow { display: none; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
   #alignRow.show { display: flex; }
   .align-lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin-bottom: 4px; }
@@ -143,10 +155,13 @@
     background: var(--panel); border: 1px dashed var(--border); padding: 18px 26px; border-radius: 14px;
   }
   /* ---------- Inline text editor ---------- */
+  /* Editor de texto in-place: transparente, deja ver la figura detrás; el texto
+     coincide en fuente/color/alineación con el de la figura. */
   #editor {
     position: absolute; display: none; z-index: 10; resize: none; overflow: hidden;
-    border: 2px solid var(--accent); border-radius: 6px; background: var(--panel); color: var(--ink);
-    text-align: center; font-family: inherit; outline: none; padding: 4px;
+    border: 1px dashed var(--accent); border-radius: 4px; background: transparent;
+    color: var(--ink); text-align: center; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.3; outline: none; padding: 0; margin: 0;
   }
   /* ---------- Help modal ---------- */
   #helpModal {
@@ -378,6 +393,12 @@
       <div class="prop-row" data-only="shape"><span>Texto</span><input type="color" id="pText" aria-label="Color de texto"></div>
       <div class="prop-row" data-only="shape"><span>Borde</span><select id="pBorder" aria-label="Estilo de borde">
         <option value="solid">Sólido</option><option value="dashed">Guiones</option><option value="dotted">Punteado</option></select></div>
+      <div class="prop-row" data-only="shape"><span>Estado</span><select id="pBadge" aria-label="Badge de estado">
+        <option value="">Ninguno</option><option value="check">OK</option><option value="warn">Atención</option><option value="error">Error</option><option value="info">Info</option><option value="star">Estrella</option><option value="clock">Pendiente</option></select></div>
+      <div class="palette-block" data-only="shape">
+        <div class="prop-sub">Mis colores <small>(clic = aplicar relleno · clic derecho = quitar)</small></div>
+        <div id="palSwatches" class="pal-swatches"></div>
+      </div>
       <div class="prop-row" data-only="conn"><span>Trazado</span><select id="cRoute" aria-label="Trazado del conector">
         <option value="straight">Recto</option><option value="curved">Curvo</option><option value="orthogonal">Ortogonal</option></select></div>
       <div class="prop-row" data-only="conn"><span>Línea</span><select id="cStyle" aria-label="Estilo de línea">
@@ -719,24 +740,44 @@ function netBody(icon) {
 // Figuras estructuradas (Clase UML / Entidad ERD): título + compartimentos.
 function structuredBody(s) {
   const { x, y, w, h } = s, fs = s.fontSize || 13, lh = fs * 1.5, headerH = lh + 6;
+  const ed = editing && editing.kind === "shape" && editing.id === s.id ? editing.seg : null;
   const nodes = [mk("rect", { x, y, width: w, height: h, rx: 3, fill: s.fill, stroke: s.stroke, "stroke-width": 2 })];
   nodes.push(mk("rect", { x, y, width: w, height: headerH, fill: s.stroke, opacity: 0.16 }));
   const lines = String(s.label || "").split("\n");
   const title = lines[0] || "";
-  nodes.push(textNode(x + w / 2, y + headerH / 2 + fs * 0.36, "middle", title, s.textColor, fs, 700));
+  if (ed !== "title") nodes.push(textNode(x + w / 2, y + headerH / 2 + fs * 0.36, "middle", title, s.textColor, fs, 700));
   nodes.push(mk("line", { x1: x, y1: y + headerH, x2: x + w, y2: y + headerH, stroke: s.stroke, "stroke-width": 1 }));
-  let ty = y + headerH + fs + 3;
-  for (let i = 1; i < lines.length; i++) {
-    const ln = lines[i];
-    if (ln.trim() === "--" || ln.trim() === "—") {
-      const dy = ty - fs - 1;
-      nodes.push(mk("line", { x1: x, y1: dy, x2: x + w, y2: dy, stroke: s.stroke, "stroke-width": 1 }));
-      continue;
+  if (ed !== "body") {
+    let ty = y + headerH + fs + 3;
+    for (let i = 1; i < lines.length; i++) {
+      const ln = lines[i];
+      if (ln.trim() === "--" || ln.trim() === "—") {
+        const dy = ty - fs - 1;
+        nodes.push(mk("line", { x1: x, y1: dy, x2: x + w, y2: dy, stroke: s.stroke, "stroke-width": 1 }));
+        continue;
+      }
+      nodes.push(textNode(x + 8, ty, "start", ln, s.textColor, fs, 400));
+      ty += lh;
     }
-    nodes.push(textNode(x + 8, ty, "start", ln, s.textColor, fs, 400));
-    ty += lh;
   }
   return nodes;
+}
+// Badges de estado dibujados en la esquina superior izquierda de la figura.
+const BADGES = {
+  check: { color: "#16a34a", glyph: s => [mk("path", { d: `M${s.cx - 3.4},${s.cy + 0.3} l2.4,2.6 l4.4,-5`, fill: "none", stroke: "#fff", "stroke-width": 1.8, "stroke-linecap": "round", "stroke-linejoin": "round" })] },
+  warn: { color: "#f59e0b", glyph: s => [mk("line", { x1: s.cx, y1: s.cy - 4, x2: s.cx, y2: s.cy + 1.5, stroke: "#fff", "stroke-width": 1.8, "stroke-linecap": "round" }), mk("circle", { cx: s.cx, cy: s.cy + 4, r: 1.1, fill: "#fff" })] },
+  error: { color: "#dc2626", glyph: s => [mk("path", { d: `M${s.cx - 3.4},${s.cy - 3.4} l6.8,6.8 M${s.cx + 3.4},${s.cy - 3.4} l-6.8,6.8`, stroke: "#fff", "stroke-width": 1.8, "stroke-linecap": "round" })] },
+  info: { color: "#3b82f6", glyph: s => [mk("line", { x1: s.cx, y1: s.cy - 1.5, x2: s.cx, y2: s.cy + 4, stroke: "#fff", "stroke-width": 1.8, "stroke-linecap": "round" }), mk("circle", { cx: s.cx, cy: s.cy - 4, r: 1.1, fill: "#fff" })] },
+  star: { color: "#eab308", glyph: s => [mk("path", { d: `M${s.cx},${s.cy - 5} l1.5,3.1 l3.4,.5 l-2.45,2.4 l.6,3.4 l-3.05,-1.6 l-3.05,1.6 l.6,-3.4 l-2.45,-2.4 l3.4,-.5 z`, fill: "#fff", stroke: "none" })] },
+  clock: { color: "#64748b", glyph: s => [mk("circle", { cx: s.cx, cy: s.cy, r: 4.5, fill: "none", stroke: "#fff", "stroke-width": 1.3 }), mk("path", { d: `M${s.cx},${s.cy} V${s.cy - 2.8} M${s.cx},${s.cy} H${s.cx + 2.2}`, stroke: "#fff", "stroke-width": 1.3, "stroke-linecap": "round" })] }
+};
+function badgeEl(shape) {
+  const def = BADGES[shape.badge]; if (!def) return null;
+  const cx = shape.x, cy = shape.y, r = 9;
+  const g = mk("g", { "pointer-events": "none" });
+  g.appendChild(mk("circle", { cx, cy, r, fill: def.color, stroke: "#fff", "stroke-width": 1.5 }));
+  def.glyph({ cx, cy }).forEach(n => g.appendChild(n));
+  return g;
 }
 function textNode(x, y, anchor, str, color, fs, weight) {
   const t = mk("text", { x, y, "text-anchor": anchor, fill: color, "font-size": fs, "font-family": "system-ui, -apple-system, sans-serif", "font-weight": weight || 400, "pointer-events": "none" });
@@ -959,6 +1000,9 @@ let clipboard = null;       // {shapes, conns} copiados con Ctrl+C
 let versions = [];          // historial de revisiones: {id, name, ts, shapes, conns, frames}
 let spaceDown = false;      // barra espaciadora → arrastrar el lienzo (pan)
 let snapGuides = [];        // guías inteligentes activas durante un arrastre
+let dropPreview = null;     // {x,y} indicador de caída al arrastrar desde la paleta
+let dragType = null;        // tipo de figura que se está arrastrando desde la paleta
+let hoverShape = null;      // figura bajo el cursor (para mostrar tiradores de quick-connect)
 let lastNudge = 0;          // para agrupar el historial al mover con flechas
 let presenting = false;     // modo presentación activo
 let presIndex = 0;          // diapositiva actual
@@ -1113,9 +1157,10 @@ function shapeEl(s) {
   }
   nodes.forEach(n => g.appendChild(n));
   const tm = def.text || "center";
-  if (tm === "center") g.appendChild(labelCenter(s));
-  else if (tm === "below") g.appendChild(labelBelow(s));
-  // 'none' => el body dibuja su propio texto (figuras estructuradas)
+  const editingThis = editing && editing.kind === "shape" && editing.id === s.id;
+  if (tm === "center" && !editingThis) g.appendChild(labelCenter(s));
+  else if (tm === "below" && !editingThis) g.appendChild(labelBelow(s));
+  // 'none' => el body dibuja su propio texto (figuras estructuradas; oculta el compartimento bajo edición)
   if (s.locked) {
     const bx = s.x + s.w - 16, by = s.y + 3, lg = mk("g", { "pointer-events": "none" });
     lg.appendChild(mk("rect", { x: bx, y: by, width: 13, height: 14, rx: 2, fill: "#475569" }));
@@ -1123,6 +1168,7 @@ function shapeEl(s) {
     lg.appendChild(mk("rect", { x: bx + 2.5, y: by + 6, width: 8, height: 6, rx: 1, fill: "#fff" }));
     g.appendChild(lg);
   }
+  const badge = badgeEl(s); if (badge) g.appendChild(badge);
   return g;
 }
 // Marcadores (cabeceras) de conector, en dos variantes de color (normal y seleccionado).
@@ -1218,15 +1264,14 @@ function selectionOverlay() {
       rh.style.cursor = "grab";
       if (rotT) { stick.setAttribute("transform", rotT); rh.setAttribute("transform", rotT); }
       g.appendChild(stick); g.appendChild(rh);
-      // Manijas de redimensionado solo cuando la figura NO está rotada (para evitar matemática ambigua).
-      if (!s.rot) {
-        const hs = 9 / scale;
-        const corners = [["nw", s.x - pad, s.y - pad], ["ne", s.x + s.w + pad, s.y - pad], ["sw", s.x - pad, s.y + s.h + pad], ["se", s.x + s.w + pad, s.y + s.h + pad]];
-        for (const [name, hx, hy] of corners) {
-          const h = mk("rect", { x: hx - hs / 2, y: hy - hs / 2, width: hs, height: hs, rx: 2 / scale, fill: "#3b82f6", stroke: "#fff", "stroke-width": 1 / scale, "data-handle": name });
-          h.style.cursor = (name === "nw" || name === "se") ? "nwse-resize" : "nesw-resize";
-          g.appendChild(h);
-        }
+      // Manijas de redimensionado (también con rotación: giran con la figura).
+      const hs = 9 / scale;
+      const corners = [["nw", s.x - pad, s.y - pad], ["ne", s.x + s.w + pad, s.y - pad], ["sw", s.x - pad, s.y + s.h + pad], ["se", s.x + s.w + pad, s.y + s.h + pad]];
+      for (const [name, hx, hy] of corners) {
+        const h = mk("rect", { x: hx - hs / 2, y: hy - hs / 2, width: hs, height: hs, rx: 2 / scale, fill: "#3b82f6", stroke: "#fff", "stroke-width": 1 / scale, "data-handle": name });
+        h.style.cursor = (name === "nw" || name === "se") ? "nwse-resize" : "nesw-resize";
+        if (rotT) h.setAttribute("transform", rotT);
+        g.appendChild(h);
       }
     }
   }
@@ -1256,7 +1301,7 @@ function renderAll() {
     const cs = connsAfter.get(i);
     if (cs) for (const c of cs) { const el = connEl(c); if (el) content.appendChild(el); }
   });
-  if (drag && drag.kind === "connect") {
+  if (drag && (drag.kind === "connect" || drag.kind === "quickconnect")) {
     const a = getShape(drag.fromId);
     if (a) {
       const p1 = edgePoint(a, drag.x, drag.y);
@@ -1266,6 +1311,11 @@ function renderAll() {
   if (drag && drag.kind === "marquee") {
     const x = Math.min(drag.x0, drag.x1), y = Math.min(drag.y0, drag.y1), w = Math.abs(drag.x1 - drag.x0), h = Math.abs(drag.y1 - drag.y0);
     content.appendChild(mk("rect", { x, y, width: w, height: h, fill: "rgba(59,130,246,0.12)", stroke: "#3b82f6", "stroke-width": 1 / scale, "stroke-dasharray": `${4 / scale} ${3 / scale}`, "pointer-events": "none" }));
+  }
+  // Indicador de caída (drag&drop desde la paleta): figura fantasma en el cursor.
+  if (dropPreview && SHAPES[dragType]) {
+    const def = SHAPES[dragType];
+    content.appendChild(mk("rect", { x: dropPreview.x - def.w / 2, y: dropPreview.y - def.h / 2, width: def.w, height: def.h, rx: 6, fill: "rgba(79,140,255,0.12)", stroke: "var(--accent)", "stroke-width": 1.5 / scale, "stroke-dasharray": `${6 / scale} ${4 / scale}`, "pointer-events": "none" }));
   }
   // Guías inteligentes (durante el arrastre de una figura).
   for (const g of snapGuides) {
@@ -1288,6 +1338,21 @@ function renderAll() {
   }
   const ov = selectionOverlay();
   if (ov) content.appendChild(ov);
+  // Tiradores de quick-connect en la figura bajo el cursor (modo selección, sin arrastre).
+  if (tool === "select" && !drag && !editing && hoverShape !== null) {
+    const s = getShape(hoverShape);
+    if (s && !s.locked) {
+      const cx = s.x + s.w / 2, cy = s.y + s.h / 2, off = 13 / scale, r = 7 / scale, qg = mk("g", { id: "qcOverlay" });
+      const sides = [["n", cx, s.y - off], ["s", cx, s.y + s.h + off], ["w", s.x - off, cy], ["e", s.x + s.w + off, cy]];
+      for (const [side, hx, hy] of sides) {
+        const h = mk("circle", { cx: hx, cy: hy, r, fill: "#fff", stroke: "#3b82f6", "stroke-width": 1.6 / scale, "data-qc": side, "data-qc-id": s.id });
+        h.style.cursor = "crosshair";
+        qg.appendChild(h);
+        qg.appendChild(mk("circle", { cx: hx, cy: hy, r: 2 / scale, fill: "#3b82f6", "pointer-events": "none" }));
+      }
+      content.appendChild(qg);
+    }
+  }
   applyTransform();
   updateProps();
   updateHistoryButtons();
@@ -1328,6 +1393,7 @@ function updateProps() {
   document.getElementById("pStroke").value = isColor(s.stroke) && s.stroke !== "none" ? s.stroke : "#334155";
   document.getElementById("pText").value = s.textColor || "#1e293b";
   document.getElementById("pBorder").value = s.borderStyle || "solid";
+  document.getElementById("pBadge").value = s.badge || "";
   document.getElementById("pLock").textContent = shapes.some(x => !x.locked) ? "Bloquear" : "Desbloquear";
   const alignRow = document.getElementById("alignRow");
   alignRow.classList.toggle("show", shapes.length >= 2);
@@ -1347,11 +1413,39 @@ function bindColor(inputId, prop) {
 bindColor("pFill", "fill");
 bindColor("pStroke", "stroke");
 bindColor("pText", "textColor");
+// ---------- Paletas de colores guardables ----------
+const PALETTE_KEY = "misdiagramas-palette";
+function loadPalette() { try { const a = JSON.parse(localStorage.getItem(PALETTE_KEY) || "[]"); return Array.isArray(a) ? a.filter(isColor) : []; } catch (_) { return []; } }
+function savePalette(a) { try { localStorage.setItem(PALETTE_KEY, JSON.stringify(a)); } catch (_) {} }
+let myColors = loadPalette();
+function renderSwatches() {
+  const cont = document.getElementById("palSwatches"); if (!cont) return;
+  cont.innerHTML = "";
+  for (const c of myColors) {
+    const b = document.createElement("button"); b.style.background = c; b.title = c + " — clic: aplicar · clic derecho: quitar";
+    b.addEventListener("click", () => { const sh = selectedShapes().filter(s => !s.locked); if (!sh.length) return; pushUndo(); sh.forEach(s => s.fill = c); markDirty(); renderAll(); });
+    b.addEventListener("contextmenu", ev => { ev.preventDefault(); myColors = myColors.filter(x => x !== c); savePalette(myColors); renderSwatches(); });
+    cont.appendChild(b);
+  }
+  const add = document.createElement("button"); add.className = "pal-add"; add.textContent = "+"; add.title = "Guardar el color de relleno actual";
+  add.addEventListener("click", () => {
+    const s = selectedShapes()[0]; const col = s && isColor(s.fill) && s.fill !== "none" ? s.fill : document.getElementById("pFill").value;
+    if (col && !myColors.includes(col)) { myColors.unshift(col); if (myColors.length > 24) myColors.length = 24; savePalette(myColors); renderSwatches(); }
+  });
+  cont.appendChild(add);
+}
 document.getElementById("pBorder").addEventListener("change", e => {
   const shapes = selectedShapes().filter(s => !s.locked);
   if (!shapes.length) return;
   pushUndo();
   shapes.forEach(s => { if (e.target.value === "solid") delete s.borderStyle; else s.borderStyle = e.target.value; });
+  markDirty(); renderAll();
+});
+document.getElementById("pBadge").addEventListener("change", e => {
+  const shapes = selectedShapes().filter(s => !s.locked);
+  if (!shapes.length) return;
+  pushUndo();
+  shapes.forEach(s => { if (!e.target.value) delete s.badge; else s.badge = e.target.value; });
   markDirty(); renderAll();
 });
 function bindConnSelect(id, prop) {
@@ -1517,6 +1611,7 @@ function selectAll() { selIds = new Set(state.shapes.map(s => s.id)); selConnId 
 // ---------- Herramientas ----------
 function setTool(t) {
   tool = t;
+  if (hoverShape !== null) hoverShape = null;
   document.querySelectorAll("[data-tool]").forEach(b => b.classList.toggle("active", b.dataset.tool === t));
   svg.classList.toggle("tool-shape", !!SHAPES[t]);
   svg.classList.toggle("tool-connect", t === "connect");
@@ -1559,6 +1654,25 @@ function createShape(type, x, y) {
   autoEditNew(s);
   return s;
 }
+// Quick-connect: conecta `fromId` con la figura `targetId`, o crea una figura
+// nueva (mismo tipo y estilo) en `worldPt` ya conectada si targetId es null.
+function quickConnectFinish(fromId, worldPt, targetId) {
+  const from = getShape(fromId); if (!from) return null;
+  pushUndo();
+  let toId = targetId;
+  if (!toId) {
+    const def = SHAPES[from.type];
+    const s = buildShape(from.type, worldPt.x - def.w / 2, worldPt.y - def.h / 2, def.w, def.h);
+    s.fill = from.fill; s.stroke = from.stroke; s.textColor = from.textColor;
+    if (from.borderStyle) s.borderStyle = from.borderStyle;
+    state.shapes.push(s); toId = s.id;
+  }
+  if (toId !== fromId && !state.conns.some(c => c.from === fromId && c.to === toId)) {
+    state.conns.push({ id: uid(), from: fromId, to: toId, label: "", style: "solid", startArrow: "none", endArrow: "arrow", route: "straight" });
+  }
+  selectOnlyShape(toId); markDirty(); renderAll();
+  return toId;
+}
 
 // ---------- Interacción con puntero ----------
 function isDoubleClick(key, e) {
@@ -1574,6 +1688,13 @@ svg.addEventListener("pointerdown", e => {
   const pt = toWorld(e);
   if (e.button === 1) { e.preventDefault(); drag = { kind: "pan", sx: e.clientX, sy: e.clientY, ox: pan.x, oy: pan.y }; svg.classList.add("panning"); return; }
   if (e.button !== 0) return;
+
+  // --- Quick-connect: tirador en el borde de la figura bajo el cursor ---
+  const qcEl = e.target.closest ? e.target.closest("[data-qc]") : null;
+  if (qcEl) {
+    drag = { kind: "quickconnect", fromId: +qcEl.getAttribute("data-qc-id"), side: qcEl.getAttribute("data-qc"), x: pt.x, y: pt.y };
+    return;
+  }
 
   // --- Marcos (frames): pestaña = mover/seleccionar; tirador = redimensionar ---
   const frameHandle = e.target.closest ? e.target.closest("[data-frame-handle]") : null;
@@ -1607,7 +1728,19 @@ svg.addEventListener("pointerdown", e => {
 
   if (handleEl && soleShapeId() !== null) {
     const s = getShape(soleShapeId()); if (!s || s.locked) return;
-    drag = { kind: "resize", id: s.id, handle: handleEl.dataset.handle, orig: { ...s }, sx: pt.x, sy: pt.y, before: JSON.stringify(state), pushed: false };
+    const hndl = handleEl.dataset.handle;
+    const d = { kind: "resize", id: s.id, handle: hndl, orig: { ...s }, sx: pt.x, sy: pt.y, before: JSON.stringify(state), pushed: false };
+    if (s.rot) {
+      // Para redimensionar rotado: fijamos en el mundo la esquina OPUESTA al tirador.
+      const rad = s.rot * Math.PI / 180, cos = Math.cos(rad), sin = Math.sin(rad);
+      const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+      const ax = hndl.includes("e") ? -1 : 1, ay = hndl.includes("s") ? -1 : 1; // signo de la esquina ancla (opuesta)
+      const lx = ax * s.w / 2, ly = ay * s.h / 2;
+      d.rot = s.rot; d.cos = cos; d.sin = sin;
+      d.anchorX = cx + lx * cos - ly * sin;
+      d.anchorY = cy + lx * sin + ly * cos;
+    }
+    drag = d;
     return;
   }
   if (SHAPES[tool]) {
@@ -1624,7 +1757,7 @@ svg.addEventListener("pointerdown", e => {
   if (shapeG) {
     const id = +shapeG.dataset.id, s = getShape(id);
     if (!s) return;
-    if (isDoubleClick("s" + id, e)) { drag = null; if (!s.locked) startEdit("shape", id); else { selectOnlyShape(id); renderAll(); } return; }
+    if (isDoubleClick("s" + id, e)) { drag = null; if (!s.locked) startEdit("shape", id, { clickY: pt.y }); else { selectOnlyShape(id); renderAll(); } return; }
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
     if (additive) {
       // Sumar/quitar la figura (y sus pares de grupo) de la selección.
@@ -1697,6 +1830,23 @@ window.addEventListener("pointermove", e => {
     const nw = Math.max(80, snap(drag.ow + (pt.x - drag.sx))), nh = Math.max(60, snap(drag.oh + (pt.y - drag.sy)));
     if (nw === f.w && nh === f.h) return;
     confirmDragSnapshot(); f.w = nw; f.h = nh; requestRender();
+  } else if (drag.kind === "resize" && drag.rot) {
+    // Resize con rotación: la esquina opuesta (ancla) queda fija en el mundo.
+    const s = getShape(drag.id); if (!s) return;
+    const h = drag.handle, cos = drag.cos, sin = drag.sin;
+    const hx = h.includes("e") ? 1 : -1, hy = h.includes("s") ? 1 : -1; // signo de la esquina arrastrada
+    const vx = pt.x - drag.anchorX, vy = pt.y - drag.anchorY;
+    // vector ancla→cursor en coords locales (sin rotar): R(-θ)·v
+    const lx = vx * cos + vy * sin, ly = -vx * sin + vy * cos;
+    let nw = Math.max(MIN_W, lx * hx), nh = Math.max(MIN_H, ly * hy);
+    nw = Math.round(nw); nh = Math.round(nh);
+    // nuevo centro: el ancla queda fija; offset del centro respecto del ancla = (hx*nw/2, hy*nh/2) local
+    const ox = hx * nw / 2, oy = hy * nh / 2;
+    const cnx = drag.anchorX + ox * cos - oy * sin;
+    const cny = drag.anchorY + ox * sin + oy * cos;
+    const nx = cnx - nw / 2, ny = cny - nh / 2;
+    if (nx === s.x && ny === s.y && nw === s.w && nh === s.h) return;
+    confirmDragSnapshot(); s.x = nx; s.y = ny; s.w = nw; s.h = nh; requestRender();
   } else if (drag.kind === "resize") {
     const s = getShape(drag.id); if (!s) return;
     const o = drag.orig, dx = pt.x - drag.sx, dy = pt.y - drag.sy, h = drag.handle;
@@ -1712,7 +1862,7 @@ window.addEventListener("pointermove", e => {
     confirmDragSnapshot(); s.x = nx; s.y = ny; s.w = nw; s.h = nh; requestRender();
   } else if (drag.kind === "pan") {
     pan.x = drag.ox + (e.clientX - drag.sx); pan.y = drag.oy + (e.clientY - drag.sy); applyTransform();
-  } else if (drag.kind === "connect") {
+  } else if (drag.kind === "connect" || drag.kind === "quickconnect") {
     drag.x = pt.x; drag.y = pt.y; requestRender();
   }
 });
@@ -1746,6 +1896,16 @@ window.addEventListener("pointerup", e => {
     // Clic sin arrastrar sobre una figura de una multi-selección → colapsar a ella.
     selIds = new Set(groupPeers(drag.anchorId)); selConnId = null; renderAll();
   }
+  if (drag.kind === "quickconnect") {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const tg = el && el.closest ? el.closest("g.shape") : null;
+    let targetId = tg ? +tg.dataset.id : null;
+    if (targetId === drag.fromId) targetId = null;
+    const from = getShape(drag.fromId);
+    const far = from ? Math.hypot(drag.x - (from.x + from.w / 2), drag.y - (from.y + from.h / 2)) > 24 : false;
+    if (from && (targetId || far)) quickConnectFinish(drag.fromId, { x: drag.x, y: drag.y }, targetId);
+    drag = null; hoverShape = null; renderAll(); return;
+  }
   if (drag.kind === "connect") {
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const targetG = el && el.closest ? el.closest("g.shape") : null;
@@ -1766,19 +1926,32 @@ window.addEventListener("pointerup", e => {
 
 svg.addEventListener("dblclick", e => {
   e.preventDefault();
+  const pt = toWorld(e);
   const shapeG = e.target.closest ? e.target.closest("g.shape") : null;
   const connG = e.target.closest ? e.target.closest("g.conn") : null;
-  if (shapeG) startEdit("shape", +shapeG.dataset.id);
+  if (shapeG) startEdit("shape", +shapeG.dataset.id, { clickY: pt.y });
   else if (connG) startEdit("conn", +connG.dataset.id);
 });
 
 // ---------- Drag & drop desde la paleta ----------
-svg.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; svg.classList.add("drop-target"); });
-svg.addEventListener("dragleave", e => { if (e.target === svg) svg.classList.remove("drop-target"); });
+// Hover para quick-connect: detectar la figura bajo el cursor (sin arrastre activo).
+svg.addEventListener("pointermove", e => {
+  if (drag || editing || presenting || tool !== "select") { if (hoverShape !== null) { hoverShape = null; requestRender(); } return; }
+  const qc = e.target.closest ? e.target.closest("[data-qc]") : null;
+  const g = e.target.closest ? e.target.closest("g.shape") : null;
+  let id = qc ? +qc.getAttribute("data-qc-id") : (g ? +g.dataset.id : null);
+  if (id !== null) { const s = getShape(id); if (!s || s.locked) id = null; }
+  if (id !== hoverShape) { hoverShape = id; requestRender(); }
+});
+svg.addEventListener("dragover", e => {
+  e.preventDefault(); e.dataTransfer.dropEffect = "copy"; svg.classList.add("drop-target");
+  const pt = toWorld(e); dropPreview = { x: pt.x, y: pt.y }; requestRender();
+});
+svg.addEventListener("dragleave", e => { if (e.target === svg) { svg.classList.remove("drop-target"); dropPreview = null; requestRender(); } });
 svg.addEventListener("drop", e => {
-  e.preventDefault(); svg.classList.remove("drop-target");
+  e.preventDefault(); svg.classList.remove("drop-target"); dropPreview = null;
   const t = e.dataTransfer.getData("text/shape");
-  if (t && SHAPES[t]) { const pt = toWorld(e); createShape(t, pt.x, pt.y); }
+  if (t && Object.prototype.hasOwnProperty.call(SHAPES, t)) { const pt = toWorld(e); createShape(t, pt.x, pt.y); }
 });
 
 // ---------- Zoom ----------
@@ -1805,53 +1978,80 @@ function fitView() {
 }
 
 // ---------- Edición de texto inline ----------
-function startEdit(kind, id) {
-  if (editing && editing.kind === kind && editing.id === id) return;
-  let x, y, w, h, fontSize, current, multi = false;
+// ¿Es figura estructurada (Clase/Entidad: título + filas en compartimentos)?
+function isStructured(def) { return def && def.text === "none" && !def.noText; }
+function startEdit(kind, id, opts) {
+  opts = opts || {};
+  let x, y, w, h, fontSize, current, multi = false, align = "center", weight = 400, color = "#1e293b", seg = null;
   if (kind === "shape") {
     const s = getShape(id); if (!s || s.locked) return;
     const def = SHAPES[s.type] || {};
     if (def.noText) { selectOnlyShape(id); renderAll(); return; } // figura sin texto editable
-    fontSize = s.fontSize || 14; current = s.label || "";
-    if (def.text === "below") { x = s.x - 10; y = s.y + s.h; w = s.w + 20; h = Math.max(24, fontSize + 10); }
-    else { x = s.x; y = s.y; w = s.w; h = s.h; }
-    if (def.text === "none") multi = true; // estructuradas: varias líneas
+    fontSize = s.fontSize || 14; color = s.textColor || "#1e293b";
+    if (isStructured(def)) {
+      const lines = String(s.label || "").split("\n");
+      const lh = fontSize * 1.5, headerH = lh + 6;
+      seg = (opts.clickY != null && opts.clickY > s.y + headerH) ? "body" : "title";
+      if (seg === "title") { current = lines[0] || ""; x = s.x; y = s.y; w = s.w; h = headerH; align = "center"; weight = 700; }
+      else { current = lines.slice(1).join("\n"); x = s.x + 4; y = s.y + headerH; w = s.w - 8; h = Math.max(lh, s.h - headerH); align = "left"; multi = true; }
+    } else if (def.text === "below") {
+      current = s.label || ""; x = s.x - 12; y = s.y + s.h; w = s.w + 24; h = Math.max(22, fontSize + 8); align = "center"; weight = 600;
+    } else {
+      current = s.label || ""; x = s.x; y = s.y; w = s.w; h = s.h; align = "center";
+    }
   } else {
     const c = getConn(id); if (!c) return;
     const a = getShape(c.from), b = getShape(c.to); if (!a || !b) return;
     const ca = center(a), cb = center(b);
-    x = (ca.x + cb.x) / 2 - 60; y = (ca.y + cb.y) / 2 - 16; w = 120; h = 32; fontSize = 12; current = c.label || "";
+    x = (ca.x + cb.x) / 2 - 60; y = (ca.y + cb.y) / 2 - 14; w = 120; h = 28; fontSize = 12; current = c.label || ""; color = "var(--ink)";
   }
-  editing = { kind, id, original: current, multi };
+  if (editing && editing.kind === kind && editing.id === id && editing.seg === seg) return;
+  editing = { kind, id, original: current, multi, seg };
   const wrapR = document.getElementById("canvasWrap").getBoundingClientRect();
   const svgR = svg.getBoundingClientRect();
   editorEl.style.left = ((svgR.left - wrapR.left) + x * scale + pan.x) + "px";
   editorEl.style.top = ((svgR.top - wrapR.top) + y * scale + pan.y) + "px";
-  editorEl.style.width = Math.max(80, w * scale) + "px";
-  editorEl.style.height = Math.max(28, h * scale) + "px";
+  editorEl.style.width = Math.max(40, w * scale) + "px";
+  editorEl.style.height = Math.max(20, h * scale) + "px";
   editorEl.style.fontSize = (fontSize * scale) + "px";
-  editorEl.style.textAlign = multi ? "left" : "center";
+  editorEl.style.textAlign = align;
+  editorEl.style.fontWeight = weight;
+  editorEl.style.color = color;
   editorEl.value = current;
   editorEl.style.display = "block";
+  renderAll(); // re-render: oculta el texto bajo edición (se ve la figura detrás del editor transparente)
   setTimeout(() => { if (!editing) return; editorEl.focus(); editorEl.select(); }, 0);
 }
 function commitEdit() {
   if (!editing) return;
   const e = editing; editing = null; editorEl.style.display = "none";
   let val = editorEl.value.replace(/\s+$/, "");
-  if (e.kind === "conn") val = val.replace(/\n/g, " ").slice(0, MAX_CONN_LABEL);
-  else val = val.slice(0, MAX_LABEL);
-  if (val === e.original) { renderAll(); return; }
-  pushUndo();
-  if (e.kind === "shape") { const s = getShape(e.id); if (s) s.label = val; }
-  else { const c = getConn(e.id); if (c) c.label = val; }
-  markDirty(); renderAll();
+  if (e.kind === "conn") {
+    val = val.replace(/\n/g, " ").slice(0, MAX_CONN_LABEL);
+    const c = getConn(e.id); if (!c || val === e.original) { renderAll(); return; }
+    pushUndo(); c.label = val; markDirty(); renderAll(); return;
+  }
+  const s = getShape(e.id); if (!s) { renderAll(); return; }
+  let newLabel;
+  if (e.seg) {
+    const lines = String(s.label || "").split("\n");
+    if (e.seg === "title") newLabel = [val.replace(/\n/g, " "), ...lines.slice(1)].join("\n");
+    else newLabel = [lines[0] || "", ...val.split("\n")].join("\n");
+  } else {
+    newLabel = val;
+  }
+  newLabel = newLabel.slice(0, MAX_LABEL);
+  if (newLabel === (s.label || "")) { renderAll(); return; }
+  pushUndo(); s.label = newLabel; markDirty(); renderAll();
 }
-function cancelEdit() { editing = null; editorEl.style.display = "none"; }
+function cancelEdit() { editing = null; editorEl.style.display = "none"; renderAll(); }
 editorEl.addEventListener("keydown", e => {
   e.stopPropagation();
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitEdit(); }
-  if (e.key === "Escape") cancelEdit();
+  if (e.key === "Escape") { e.preventDefault(); cancelEdit(); return; }
+  if (e.key === "Enter") {
+    if (editing && editing.multi) { if (e.ctrlKey || e.metaKey) { e.preventDefault(); commitEdit(); } }
+    else if (!e.shiftKey) { e.preventDefault(); commitEdit(); }
+  }
 });
 editorEl.addEventListener("blur", () => { if (editing) commitEdit(); });
 
@@ -1974,7 +2174,20 @@ function buildPalette() {
       it.appendChild(previewSVG(t));
       const nm = document.createElement("span"); nm.textContent = def.name; it.appendChild(nm);
       it.addEventListener("click", () => setTool(t));
-      it.addEventListener("dragstart", ev => { ev.dataTransfer.setData("text/shape", t); ev.dataTransfer.effectAllowed = "copy"; });
+      it.addEventListener("dragstart", ev => {
+        ev.dataTransfer.setData("text/shape", t); ev.dataTransfer.effectAllowed = "copy";
+        // Imagen de arrastre = preview de la figura (más grande), siguiendo el cursor.
+        try {
+          const ghost = document.createElement("div");
+          ghost.style.cssText = "position:fixed;top:-1000px;left:-1000px;width:64px;height:48px;pointer-events:none;";
+          const pv = previewSVG(t); pv.setAttribute("width", "64"); pv.setAttribute("height", "48");
+          ghost.appendChild(pv); document.body.appendChild(ghost);
+          ev.dataTransfer.setDragImage(ghost, 32, 24);
+          setTimeout(() => ghost.remove(), 0);
+        } catch (_) {}
+        dragType = t;
+      });
+      it.addEventListener("dragend", () => { dragType = null; dropPreview = null; svg.classList.remove("drop-target"); requestRender(); });
       grid.appendChild(it);
     }
     wrap.appendChild(hd); wrap.appendChild(grid); lib.appendChild(wrap);
@@ -2000,7 +2213,7 @@ function sanitizeDoc(data) {
   if (!data || typeof data !== "object" || !Array.isArray(data.shapes)) return null;
   const shapes = [], seen = new Set();
   for (const raw of data.shapes) {
-    if (!raw || typeof raw !== "object" || !SHAPES[raw.type]) continue;
+    if (!raw || typeof raw !== "object" || !Object.prototype.hasOwnProperty.call(SHAPES, raw.type)) continue;
     const def = SHAPES[raw.type];
     const validId = Number.isInteger(raw.id) && raw.id > 0 && !seen.has(raw.id);
     const s = {
@@ -2018,6 +2231,7 @@ function sanitizeDoc(data) {
     if (raw.locked === true) s.locked = true;
     { const r = num(raw.rot, 0); if (r) s.rot = ((Math.round(r) % 360) + 360) % 360; }
     if (raw.borderStyle === "dashed" || raw.borderStyle === "dotted") s.borderStyle = raw.borderStyle;
+    if (typeof raw.badge === "string" && BADGES[raw.badge]) s.badge = raw.badge;
     if (validId) seen.add(raw.id);
     shapes.push(s);
   }
@@ -2730,10 +2944,43 @@ svg.addEventListener("contextmenu", e => {
 window.addEventListener("pointerdown", e => { if (!ctxEl.contains(e.target)) hideCtx(); }, true);
 window.addEventListener("blur", hideCtx);
 
+// ---------- Íconos SVG de la interfaz (sin emojis) ----------
+const UI_ICONS = {
+  btnUndo: '<path d="M9 14l-5-5 5-5"/><path d="M4 9h11a5 5 0 1 1 0 10h-3"/>',
+  btnRedo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 1 0 0 10h3"/>',
+  btnNew: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 11v6M9 14h6"/>',
+  btnOpen: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  btnSave: '<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 3v5h7"/><path d="M8 13h8v8H8z"/>',
+  btnGen: '<path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z"/>',
+  btnVer: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  btnPres: '<rect x="3" y="5" width="18" height="13" rx="1"/><path d="M10 9l5 3-5 3z"/>',
+  btnSql: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>',
+  btnPNG: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5L5 19"/>',
+  btnSVG: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/>',
+  btnTheme: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/>',
+  btnHelp: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.1 1-1.1 1.8"/><path d="M12 17h.01"/>',
+  bgClear: '<path d="M6 6l12 12M18 6L6 18"/>'
+};
+const TOOL_ICONS = {
+  select: '<path d="M5 3l15 8-6.5 1.6L11 19z"/>',
+  connect: '<path d="M5 19L19 5"/><path d="M19 5h-6M19 5v6"/>'
+};
+function svgIcon(inner, fill) {
+  return `<svg viewBox="0 0 24 24" fill="${fill ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+function injectIcons() {
+  for (const id in UI_ICONS) { const b = document.getElementById(id); if (b) b.insertAdjacentHTML("afterbegin", svgIcon(UI_ICONS[id], id === "btnGen")); }
+  // Fondo (es un <label>): ícono de gota
+  const bg = document.getElementById("bgLabel"); if (bg) bg.insertAdjacentHTML("afterbegin", svgIcon('<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>'));
+  for (const t in TOOL_ICONS) { const b = document.querySelector('.tool[data-tool="' + t + '"]'); if (b) b.insertAdjacentHTML("afterbegin", svgIcon(TOOL_ICONS[t])); }
+}
+
 // ---------- Inicio ----------
 (function init() {
   buildMarkers();
+  injectIcons();
   buildPalette();
+  renderSwatches();
   try {
     const raw = localStorage.getItem(AUTOSAVE_KEY);
     if (raw) {
@@ -2768,9 +3015,14 @@ window.__app = {
   get presIndex() { return presIndex; },
   rotateBy, resetRot, connPath, applyBg,
   sqlToEntities, importSQL, exportSQL,
-  alignSelected, distributeSelected, computeSnap, buildShape,
+  alignSelected, distributeSelected, computeSnap, buildShape, isStructured, startEdit, commitEdit,
   get snapGuides() { return snapGuides; },
-  get drag() { return drag; }, set drag(v) { drag = v; }
+  get drag() { return drag; }, set drag(v) { drag = v; },
+  get editing() { return editing; },
+  loadPalette, renderSwatches, PALETTE_KEY,
+  get dropPreview() { return dropPreview; }, set dropPreview(v) { dropPreview = v; },
+  set dragType(v) { dragType = v; }, get dragType() { return dragType; },
+  quickConnectFinish, BADGES, set hoverShape(v) { hoverShape = v; }, get hoverShape() { return hoverShape; }
 };
 </script>
 </body>

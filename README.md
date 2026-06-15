@@ -1,115 +1,123 @@
 # Mis Diagramas
 
-> Herramienta de diagramación visual en un solo archivo HTML. Un clon de LucidChart, pensado para ir más rápido: cero instalación, cero servidor, control total del dato.
+> Herramienta de diagramación visual en un único archivo HTML: un editor tipo LucidChart pensado para trabajar rápido, sin instalación, sin servidor y con control total del dato.
 
-Aplicación cliente (HTML + SVG + JavaScript, sin dependencias) para crear, editar, versionar, presentar, importar y exportar diagramas técnicos y de negocio. Todo vive en un único archivo: se abre con doble clic en cualquier navegador moderno y el documento se guarda como `.json` portable (con autoguardado en el navegador).
+Aplicación cliente (HTML + SVG + JavaScript, sin dependencias) para crear, editar, versionar, presentar, importar y exportar diagramas técnicos y de negocio. Todo reside en un único archivo: se abre con doble clic en cualquier navegador moderno y el documento se guarda como `.json` portable, con autoguardado en el navegador.
+
+**Demo en vivo:** https://catalinacarlen.github.io/mis-diagramas/
+
+**Estado:** versión **1.0** — completa, auditada y publicada.
 
 ---
 
-## ✨ Características
+## Características
 
 **Modelado y creación**
 
-- Lienzo con **arrastrar y soltar** desde un panel categorizado y buscable.
-- Mover, redimensionar, rotar, duplicar, colorear, bloquear y borrar figuras.
-- Conectores que siguen a las figuras, con cabeceras configurables (flecha, triángulo, diamante, círculo), estilo de línea (sólida/guiones/punteada), color propio y trazado recto, curvo (Bézier) u ortogonal.
-- Selección múltiple (marquee + shift/ctrl), menú contextual, copiar/cortar/pegar, agrupar, ordenar por capas.
-- Alinear y distribuir, guías inteligentes (snap a bordes y centros), zoom, paneo y ajustar al contenido.
-- Dibujar-para-dimensionar y estilo de borde por figura.
+- Lienzo con arrastrar y soltar desde un panel categorizado y buscable; también dibujar-para-dimensionar.
+- Mover, redimensionar (incluso rotada), rotar, duplicar, colorear, bloquear, alinear/distribuir y borrar figuras, con guías inteligentes de alineación (snap a bordes y centros).
+- Edición de texto in-place sobre la figura y, en figuras estructuradas (Clase/Entidad), edición por compartimentos.
+- Conectores que siguen a las figuras, con cabeceras configurables por extremo (flecha, triángulo, diamante, círculo), estilo de línea (sólida, guiones, punteada), color propio y trazado recto, curvo (Bézier) u ortogonal.
+- Selección múltiple, menú contextual, copiar/cortar/pegar, agrupar, ordenar por capas, badges de estado y *quick-connect* (crear una figura ya conectada arrastrando desde el borde).
 
-**Bibliotecas de formas**
+**Bibliotecas de formas** (94+ figuras, con íconos vectoriales propios, sin recursos con derechos de autor)
 
-- **Redes y cloud:** AWS, Azure, GCP y Cisco.
-- **UML completo:** clases, casos de uso, secuencias, estados y actividades.
-- **ERD:** entidad-relación, con import de esquema SQL → ERD y export ERD → `CREATE TABLE`.
-- **Flujo y procesos:** flowchart, BPMN, flujos de usuario, mapas de valor.
-- **UI/UX:** wireframes y mockups web y móvil.
+- Redes y cloud: AWS, Azure, GCP y Cisco.
+- UML: clases, casos de uso, secuencias, estados y actividades.
+- ERD: entidad-relación, con importación de esquema SQL → ERD y exportación ERD → `CREATE TABLE`.
+- Flujo y procesos: diagramas de flujo y BPMN.
+- UI/UX: wireframes y mockups web y móvil.
 
-(94+ figuras en total, todas con íconos vectoriales propios, sin assets con copyright.)
+**Generación automática.** Organigramas y mapas mentales a partir de texto indentado, con disposición automática sin solapamientos.
 
-**Generación automática**
+**Trazabilidad.** Deshacer/rehacer, historial de revisiones con marca de tiempo, comparación entre versiones y restauración a un punto anterior.
 
-- Organigramas y mapas mentales a partir de texto indentado, con auto-layout sin solapamientos.
+**Presentación.** Conversión de secciones del lienzo (frames) en diapositivas navegables a pantalla completa, sin exportar a PowerPoint.
 
-**Trazabilidad (control de versiones)**
-
-- Deshacer/rehacer, historial de revisiones con marca de tiempo, comparación entre versiones y restauración a un punto anterior.
-
-**Presentación**
-
-- Modo presentación: convierte secciones del lienzo (frames) en diapositivas navegables a pantalla completa, sin exportar a PowerPoint.
-
-**Persistencia e import/export**
-
-- Autoguardado local, guardar/abrir `.json` validado, export a **PNG** y **SVG**, color de fondo del lienzo y compatibilidad hacia atrás del formato.
+**Persistencia e import/export.** Autoguardado local, guardar/abrir `.json` validado, exportación a PNG y SVG, color de fondo del lienzo y compatibilidad hacia atrás del formato.
 
 ---
 
-## 🚀 Uso
+## Uso
 
 No requiere instalación ni dependencias.
 
+- En línea: https://catalinacarlen.github.io/mis-diagramas/
+- En local:
+
 ```bash
-git clone https://github.com/<tu-usuario>/quetedenLucid.git
-cd quetedenLucid
+git clone https://github.com/catalinacarlen/mis-diagramas.git
+cd mis-diagramas
 ```
 
-Luego abrí **`index.html`** con doble clic (o arrastralo al navegador). Listo.
+Luego abrir `index.html` con doble clic (o arrastrarlo al navegador).
 
 ---
 
-## 🧱 Arquitectura
+## Arquitectura
 
-Diseño guiado por **separación de incumbencias**: el motor no conoce las formas concretas, las consume desde un registro; la paleta se genera desde ese mismo registro y reutiliza el render del lienzo.
+El diseño se apoya en la separación de incumbencias: el motor no conoce las formas concretas, sino que las consume desde un registro; la paleta se genera a partir de ese mismo registro y reutiliza el render del lienzo.
 
 ```
-index.html (un solo archivo)
+index.html (un único archivo)
 │
 ├── REGISTRO (SHAPES) ──define──▶ MOTOR
 │         │                       · estado serializable
 │         │                       · render declarativo
 │         │                       · selección / conexión
 │         │                       · historial (undo/redo)
-│         │                       · persistencia / export
+│         │                       · persistencia / exportación
 │         ▼
 └── PALETA (panel drag & drop) ──consume──▶ motor
 ```
 
-Sumar una figura nueva = una entrada en el registro `SHAPES`. La especificación completa de requisitos, criterios de aceptación y matriz de trazabilidad está en [`SRS-hoja-de-ruta.md`](SRS-hoja-de-ruta.md).
+Sumar una figura nueva equivale a agregar una entrada en el registro `SHAPES`. La especificación de requisitos, los criterios de aceptación y la matriz de trazabilidad están en [`SRS-hoja-de-ruta.md`](SRS-hoja-de-ruta.md).
 
 ---
 
-## 🧭 Principios de desarrollo
+## Principios de desarrollo
 
-Rigor y formalidad · separación de incumbencias · modularidad (alta cohesión, bajo acoplamiento) · abstracción · anticipación al cambio · generalización · incrementalidad.
+El proyecto se rige por los **principios de ingeniería de software** (en la línea de Ghezzi, Jazayeri y Mandrioli, *Fundamentals of Software Engineering*):
 
-Cada iteración entrega un subconjunto funcional verificado (tests jsdom + muestrario visual) y su reporte (`REPORTE-iteracion-NN.md`).
-
----
-
-## 📋 Estado del proyecto
-
-SRS original (iteraciones 01–12): **100% cumplido** — 45 requisitos funcionales y no funcionales verificados.
-
-En curso (**Fase 2**, mejoras de calidad y experiencia, iteraciones 13–16): edición de texto in-place, compartimentos en figuras estructuradas, íconos SVG, paletas guardables, badges de estado y quick-connect.
+- **Rigor y formalidad:** requisitos numerados con criterios de aceptación medibles y verificación en cada entrega.
+- **Separación de incumbencias:** motor, registro de formas e interfaz desacoplados.
+- **Modularidad:** alta cohesión y bajo acoplamiento; cada figura es una entrada autónoma del registro.
+- **Abstracción:** identificar lo esencial e ignorar lo accesorio (los previews del panel reutilizan el render real).
+- **Anticipación al cambio:** formato de documento versionado e historial de revisiones.
+- **Generalización:** resolver el problema general (un mismo parser alimenta organigramas, mapas mentales y, a futuro, SQL → ERD).
+- **Incrementalidad:** cada iteración entrega un subconjunto funcional verificado (pruebas con jsdom + muestrario visual) y su reporte (`REPORTE-iteracion-NN.md`).
 
 ---
 
-## 📁 Estructura del repo
+## Estado del proyecto
+
+**Versión 1.0 — cerrada.**
+
+- SRS original (iteraciones 01–12): **100% cumplido** (45 requisitos funcionales y no funcionales).
+- Fase 2 — calidad y experiencia (iteraciones 13–16): **completa** (10 requisitos: edición in-place, compartimentos en figuras estructuradas, dibujar-para-dimensionar, estilo de borde, íconos SVG, drag&drop visual, paletas de color, badges de estado y *quick-connect*).
+- **Auditoría final aprobada:** verificación funcional integral y comprobaciones de seguridad (sin XSS, sin ejecución dinámica ni acceso a red, saneamiento de la entrada). Detalle en [`REPORTE-auditoria-v1.md`](REPORTE-auditoria-v1.md).
+
+**Backlog (Fase 3, opcional).** Pruebas en navegador real a gran escala, ruteo ortogonal que esquive figuras, codos de conector arrastrables, carriles BPMN múltiples, exportación a PDF, autoguardado al archivo en disco, paleta de comandos y múltiples páginas por documento.
+
+---
+
+## Estructura del repositorio
 
 | Archivo | Contenido |
 |---|---|
 | `index.html` | La aplicación completa. |
-| `SRS-hoja-de-ruta.md` | Especificación de requisitos, roadmap y matriz de trazabilidad. |
+| `SRS-hoja-de-ruta.md` | Especificación de requisitos, hoja de ruta y matriz de trazabilidad. |
 | `REPORTE-iteracion-NN.md` | Reporte de cada iteración (qué se hizo, verificación, próximos pasos). |
+| `REPORTE-auditoria-v1.md` | Auditoría funcional y de seguridad de la versión 1.0. |
 | `muestrario-*.png` | Capturas de verificación visual por iteración. |
+| `mis-diagramas-v0-prototipo.html` | Prototipo inicial, conservado como referencia. |
 
 ---
 
-## 🔒 Alcance
+## Alcance
 
-Fuera de alcance por ahora: colaboración en tiempo real, backend/cuentas, integraciones externas (Jira, Confluence) y export nativo a `.pptx`/`.docx`.
+Fuera de alcance en esta versión: colaboración en tiempo real, backend y cuentas de usuario, integraciones externas (Jira, Confluence) y exportación nativa a `.pptx` / `.docx`.
 
 ---
 
-Hecho por Cata · proyecto de uso propio.
+Desarrollado por Cata · proyecto de uso propio.
